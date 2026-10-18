@@ -1,0 +1,22 @@
+﻿@page "/prueba-api"
+@inject HttpClient Http
+
+<h3>Prueba API</h3>
+
+@if (respuesta is null)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <pre>@respuesta</pre>
+}
+
+@code {
+    private string? respuesta;
+
+    protected override async Task OnInitializedAsync()
+    {
+        respuesta = await Http.GetStringAsync("api/CategoriasProductos");
+    }
+}

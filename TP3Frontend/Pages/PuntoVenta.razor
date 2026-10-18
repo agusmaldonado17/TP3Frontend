@@ -1,0 +1,280 @@
+﻿@page "/punto-venta"
+
+@using TP3Frontend.Models
+@inject HttpClient Http
+
+<h3>Punto de Venta</h3>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="mb-3">
+            <input class="form-control"
+                   placeholder="Buscar producto..."
+                   @bind="busqueda"
+                   @bind:event="oninput" />
+        </div>
+
+        @if (cargando)
+        {
+            <p>Cargando productos...</p>
+        }
+        else if (productosFiltrados.Count == 0)
+        {
+            <p>No se encontraron productos.</p>
+        }
+        else
+        {
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var producto in productosFiltrados)
+                    {
+                        <tr>
+                            <td>@producto.Nombre</td>
+                            <td>$ @producto.PrecioVenta.ToString("N2")</td>
+                            <td>@producto.StockActual</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm"
+                                        @onclick="() => AgregarAlCarrito(producto)"
+                                        disabled="@(producto.StockActual <= 0)">
+                                    Agregar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="col-md-5">
+        <h4>Carrito</h4>
+
+        @if (carrito.Count == 0)
+        {
+            <p>No hay productos agregados.</p>
+        }
+        else
+        {
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Cant.</th>
+                        <th>Subtotal</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in carrito)
+                    {
+                        <tr>
+                            <td>@item.Nombre</td>
+
+                            <td style="width: 90px;">
+                                <input type="number"
+                                       class="form-control form-control-sm"
+                                       min="1"
+                                       max="@item.StockDisponible"
+                                       value="@item.Cantidad"
+                                       @onchange="e => CambiarCantidad(item, e)" />
+                            </td>
+
+                            <td>$ @item.Subtotal.ToString("N2")</td>
+
+                            <td>
+                                <button class="btn btn-danger btn-sm"
+                                        @onclick="() => QuitarDelCarrito(item)">
+                                    X
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <div class="text-end">
+                <h5>Total: $ @Total.ToString("N2")</h5>
+
+                <button class="btn btn-success"
+                        @onclick="ConfirmarVenta"
+                        disabled="@(!carrito.Any() || procesandoVenta)">
+                    @(procesandoVenta ? "Procesando..." : "Confirmar venta")
+                </button>
+
+                @if (!string.IsNullOrEmpty(mensaje))
+                {
+                    <div class="alert @claseMensaje mt-3">
+                        @mensaje
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Producto> productos = new();
+    private List<ItemCarrito> carrito = new();
+    private bool procesandoVenta = false;
+    private string mensaje = string.Empty;
+    private string claseMensaje = string.Empty;
+
+    private string busqueda = string.Empty;
+    private bool cargando = true;
+
+    private List<Producto> productosFiltrados =>
+        productos
+            .Where(p =>
+                p.Activo &&
+                p.Nombre.Contains(busqueda, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private decimal Total =>
+        carrito.Sum(x => x.Subtotal);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarProductos();
+    }
+
+    private async Task CargarProductos()
+    {
+        cargando = true;
+
+        try
+        {
+            var respuesta =
+                await Http.GetFromJsonAsync<RespuestaPaginada<Producto>>(
+                    "api/Productos?pagina=1&tamanoPagina=50"
+                );
+
+            if (respuesta != null)
+            {
+                productos = respuesta.Datos;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(
+                $"Error al cargar productos: {ex.Message}"
+            );
+        }
+
+        cargando = false;
+    }
+
+
+    private void AgregarAlCarrito(Producto producto)
+    {
+        var itemExistente = carrito
+            .FirstOrDefault(x => x.ProductoId == producto.Id);
+
+        if (itemExistente != null)
+        {
+            if (itemExistente.Cantidad < itemExistente.StockDisponible)
+            {
+                itemExistente.Cantidad++;
+            }
+
+            return;
+        }
+
+        carrito.Add(new ItemCarrito
+        {
+            ProductoId = producto.Id,
+            Nombre = producto.Nombre,
+            PrecioUnitario = producto.PrecioVenta,
+            Cantidad = 1,
+            StockDisponible = producto.StockActual
+        });
+    }
+
+    private void QuitarDelCarrito(ItemCarrito item)
+    {
+        carrito.Remove(item);
+    }
+
+    private void CambiarCantidad(ItemCarrito item, ChangeEventArgs e)
+    {
+        if (!int.TryParse(e.Value?.ToString(), out var cantidad))
+        {
+            return;
+        }
+
+        if (cantidad < 1)
+        {
+            cantidad = 1;
+        }
+
+        if (cantidad > item.StockDisponible)
+        {
+            cantidad = item.StockDisponible;
+        }
+
+        item.Cantidad = cantidad;
+    }
+
+    private async Task ConfirmarVenta()
+    {
+        if (carrito.Count == 0)
+        {
+            return;
+        }
+
+        procesandoVenta = true;
+        mensaje = string.Empty;
+
+        try
+        {
+            var venta = new VentaRequest
+            {
+                ClienteId = 1,
+                Detalles = carrito.Select(item => new DetalleVentaRequest
+                {
+                    ProductoId = item.ProductoId,
+                    Cantidad = item.Cantidad
+                }).ToList()
+            };
+
+            var response =
+                await Http.PostAsJsonAsync(
+                    "api/Ventas",
+                    venta
+                );
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensaje = "Venta registrada correctamente.";
+                claseMensaje = "alert-success";
+
+                carrito.Clear();
+
+                await CargarProductos();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+
+                mensaje = $"No se pudo registrar la venta: {error}";
+                claseMensaje = "alert-danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error al registrar la venta: {ex.Message}";
+            claseMensaje = "alert-danger";
+        }
+        finally
+        {
+            procesandoVenta = false;
+        }
+    }
+}

@@ -1,0 +1,29 @@
+﻿@using TP3Frontend.Services
+@inject AuthService AuthService
+
+@if (!sesionCargada)
+{
+    <p>Cargando sesión...</p>
+}
+else
+{
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <RouteView RouteData="@routeData"
+                       DefaultLayout="@typeof(Layout.MainLayout)" />
+
+            <FocusOnNavigate RouteData="@routeData"
+                             Selector="h1" />
+        </Found>
+    </Router>
+}
+
+@code {
+    private bool sesionCargada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.CargarSesionAsync();
+        sesionCargada = true;
+    }
+}

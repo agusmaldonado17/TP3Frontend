@@ -1,0 +1,185 @@
+﻿@page "/entradas"
+
+@using TP3Frontend.Models
+@inject HttpClient Http
+
+<h3>Entradas de Mercadería</h3>
+
+@if (cargando)
+{
+    <p>Cargando entradas...</p>
+}
+else if (!string.IsNullOrEmpty(error))
+{
+    <div class="alert alert-danger">
+        @error
+    </div>
+}
+else if (compras.Count == 0)
+{
+    <p>No hay entradas registradas.</p>
+}
+else
+{
+    <table class="table table-striped table-bordered">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Proveedor</th>
+                <th>Usuario</th>
+                <th>Total</th>
+                <th></th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach (var compra in compras)
+            {
+                <tr>
+                    <td>
+                        @compra.Fecha.ToString("dd/MM/yyyy HH:mm")
+                    </td>
+
+                    <td>
+                        @compra.ProveedorNombre
+                    </td>
+
+                    <td>
+                        @compra.UsuarioNombre
+                    </td>
+
+                    <td>
+                        $ @compra.Total.ToString("N2")
+                    </td>
+
+                    <td>
+                        <button class="btn btn-primary btn-sm"
+                                @onclick="() => AlternarDetalle(compra.Id)">
+                            @(compraSeleccionadaId == compra.Id
+                                ? "Ocultar"
+                                : "Ver detalle")
+                        </button>
+                    </td>
+                </tr>
+
+                @if (compraSeleccionadaId == compra.Id)
+                {
+                    <tr>
+                        <td colspan="5">
+
+                            <h6>
+                                Detalle de entrada #@compra.Id
+                            </h6>
+
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Precio unitario</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    @foreach (var detalle in compra.Detalles)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @detalle.ProductoNombre
+                                            </td>
+
+                                            <td>
+                                                @detalle.Cantidad
+                                            </td>
+
+                                            <td>
+                                                $ @detalle.PrecioUnitario.ToString("N2")
+                                            </td>
+
+                                            <td>
+                                                $ @detalle.Subtotal.ToString("N2")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+
+    private List<CompraResponse> compras = new();
+
+    private bool cargando = true;
+
+    private string error = string.Empty;
+
+    private int? compraSeleccionadaId;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarCompras();
+    }
+
+
+    private async Task CargarCompras()
+    {
+        cargando = true;
+        error = string.Empty;
+
+        try
+        {
+            var response =
+                await Http.GetAsync(
+                    "api/Compras?pagina=1&tamanoPagina=50"
+                );
+
+            if (!response.IsSuccessStatusCode)
+            {
+                error =
+                    $"No se pudieron cargar las entradas. Código: {(int)response.StatusCode} - {response.StatusCode}";
+
+                return;
+            }
+
+            var respuesta =
+                await response.Content
+                    .ReadFromJsonAsync<RespuestaPaginada<CompraResponse>>();
+
+            if (respuesta != null)
+            {
+                compras = respuesta.Datos;
+            }
+        }
+        catch (Exception ex)
+        {
+            error =
+                $"Error al cargar las entradas: {ex.Message}";
+        }
+        finally
+        {
+            cargando = false;
+        }
+    }
+
+
+    private void AlternarDetalle(int compraId)
+    {
+        if (compraSeleccionadaId == compraId)
+        {
+            compraSeleccionadaId = null;
+        }
+        else
+        {
+            compraSeleccionadaId = compraId;
+        }
+    }
+}

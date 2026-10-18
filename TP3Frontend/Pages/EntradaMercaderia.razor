@@ -1,0 +1,351 @@
+﻿@page "/entrada-mercaderia"
+
+@using TP3Frontend.Models
+@inject HttpClient Http
+
+<h3>Entrada de Mercadería</h3>
+
+@if (cargando)
+{
+    <p>Cargando...</p>
+}
+else
+{
+    <div class="row">
+        <div class="col-md-7">
+
+            <div class="mb-3">
+                <label class="form-label">Proveedor</label>
+
+                <select class="form-select" @bind="proveedorSeleccionadoId">
+                    <option value="0">Seleccione un proveedor</option>
+
+                    @foreach (var proveedor in proveedores.Where(p => p.Activo))
+                    {
+                        <option value="@proveedor.Id">
+                            @proveedor.RazonSocial
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <hr />
+
+            <h5>Productos</h5>
+
+            <div class="mb-3">
+                <input class="form-control"
+                       placeholder="Buscar producto..."
+                       @bind="busqueda"
+                       @bind:event="oninput" />
+            </div>
+
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Producto</th>
+                        <th>Stock actual</th>
+                        <th></th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    @foreach (var producto in productosFiltrados)
+                    {
+                        <tr>
+                            <td>@producto.Nombre</td>
+
+                            <td>@producto.StockActual</td>
+
+                            <td>
+                                <button class="btn btn-primary btn-sm"
+                                        @onclick="() => AgregarProducto(producto)">
+                                    Agregar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="col-md-5">
+
+            <h4>Mercadería a ingresar</h4>
+
+            @if (items.Count == 0)
+            {
+                <p>No hay productos agregados.</p>
+            }
+            else
+            {
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cant.</th>
+                            <th>Precio compra</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var item in items)
+                        {
+                            <tr>
+                                <td>@item.Nombre</td>
+
+                                <td>
+                                    <input type="number"
+                                           class="form-control form-control-sm"
+                                           style="width: 80px"
+                                           min="1"
+                                           @bind="item.Cantidad" />
+                                </td>
+
+                                <td>
+                                    <input type="number"
+                                           class="form-control form-control-sm"
+                                           style="width: 130px"
+                                           min="0"
+                                           step="0.01"
+                                           @bind="item.PrecioUnitario" />
+                                </td>
+
+                                <td>
+                                    <button class="btn btn-danger btn-sm"
+                                            @onclick="() => QuitarProducto(item)">
+                                        X
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <div class="text-end">
+
+                    <h5>
+                        Total: $ @Total.ToString("N2")
+                    </h5>
+
+                    <button class="btn btn-success"
+                            @onclick="ConfirmarEntrada"
+                            disabled="@procesando">
+                        @(procesando
+                            ? "Procesando..."
+                            : "Registrar entrada")
+                    </button>
+
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(mensaje))
+            {
+                <div class="alert @claseMensaje mt-3">
+                    @mensaje
+                </div>
+            }
+
+        </div>
+    </div>
+}
+
+@code {
+
+    private List<Producto> productos = new();
+    private List<Proveedor> proveedores = new();
+    private List<ItemEntrada> items = new();
+
+    private int proveedorSeleccionadoId;
+
+    private string busqueda = string.Empty;
+
+    private bool cargando = true;
+    private bool procesando = false;
+
+    private string mensaje = string.Empty;
+    private string claseMensaje = string.Empty;
+
+
+    private List<Producto> productosFiltrados =>
+        productos
+            .Where(p =>
+                p.Activo &&
+                p.Nombre.Contains(
+                    busqueda,
+                    StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+
+    private decimal Total =>
+        items.Sum(x => x.Subtotal);
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+
+    private async Task CargarDatos()
+    {
+        cargando = true;
+
+        await CargarProductos();
+        await CargarProveedores();
+
+        cargando = false;
+    }
+
+
+    private async Task CargarProductos()
+    {
+        var respuesta =
+            await Http.GetFromJsonAsync<RespuestaPaginada<Producto>>(
+                "api/Productos?pagina=1&tamanoPagina=50"
+            );
+
+        if (respuesta != null)
+        {
+            productos = respuesta.Datos;
+        }
+    }
+
+
+    private async Task CargarProveedores()
+    {
+        var respuesta =
+            await Http.GetFromJsonAsync<RespuestaPaginada<Proveedor>>(
+                "api/Proveedores?pagina=1&tamanoPagina=50"
+            );
+
+        if (respuesta != null)
+        {
+            proveedores = respuesta.Datos;
+        }
+    }
+
+
+    private void AgregarProducto(Producto producto)
+    {
+        var existente =
+            items.FirstOrDefault(
+                x => x.ProductoId == producto.Id);
+
+        if (existente != null)
+        {
+            existente.Cantidad++;
+            return;
+        }
+
+        items.Add(new ItemEntrada
+        {
+            ProductoId = producto.Id,
+            Nombre = producto.Nombre,
+            Cantidad = 1,
+            PrecioUnitario = 0
+        });
+    }
+
+
+    private void QuitarProducto(ItemEntrada item)
+    {
+        items.Remove(item);
+    }
+
+
+    private async Task ConfirmarEntrada()
+    {
+        mensaje = string.Empty;
+
+        if (proveedorSeleccionadoId == 0)
+        {
+            mensaje = "Debe seleccionar un proveedor.";
+            claseMensaje = "alert-warning";
+            return;
+        }
+
+        if (items.Count == 0)
+        {
+            mensaje = "Debe agregar al menos un producto.";
+            claseMensaje = "alert-warning";
+            return;
+        }
+
+        if (items.Any(x =>
+            x.Cantidad <= 0 ||
+            x.PrecioUnitario <= 0))
+        {
+            mensaje =
+                "Las cantidades y precios deben ser mayores a cero.";
+
+            claseMensaje = "alert-warning";
+
+            return;
+        }
+
+        procesando = true;
+
+        try
+        {
+            var compra = new CompraRequest
+            {
+                ProveedorId = proveedorSeleccionadoId,
+
+                Detalles = items.Select(item =>
+                    new DetalleCompraRequest
+                    {
+                        ProductoId = item.ProductoId,
+                        Cantidad = item.Cantidad,
+                        PrecioUnitario = item.PrecioUnitario
+                    })
+                    .ToList()
+            };
+
+            var response =
+                await Http.PostAsJsonAsync(
+                    "api/Compras",
+                    compra
+                );
+
+            if (response.IsSuccessStatusCode)
+            {
+                mensaje =
+                    "Entrada de mercadería registrada correctamente.";
+
+                claseMensaje =
+                    "alert-success";
+
+                items.Clear();
+
+                proveedorSeleccionadoId = 0;
+
+                await CargarProductos();
+            }
+            else
+            {
+                var error =
+                    await response.Content.ReadAsStringAsync();
+
+                mensaje =
+                    $"No se pudo registrar la entrada: {error}";
+
+                claseMensaje =
+                    "alert-danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje =
+                $"Error al registrar la entrada: {ex.Message}";
+
+            claseMensaje =
+                "alert-danger";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+}

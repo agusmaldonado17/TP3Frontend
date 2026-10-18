@@ -1,0 +1,126 @@
+﻿@page "/login"
+
+@using TP3Frontend.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+
+                <h3 class="text-center mb-4">
+                    Iniciar sesión
+                </h3>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        Usuario
+                    </label>
+
+                    <input type="text"
+                           class="form-control"
+                           @bind="username"
+                           placeholder="Ingrese su usuario" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">
+                        Contraseña
+                    </label>
+
+                    <input type="password"
+                           class="form-control"
+                           @bind="password"
+                           @onkeydown="TeclaPresionada"
+                           placeholder="Ingrese su contraseña" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(mensaje))
+                {
+                    <div class="alert alert-danger">
+                        @mensaje
+                    </div>
+                }
+
+                <button class="btn btn-primary w-100"
+                        @onclick="IniciarSesion"
+                        disabled="@procesando">
+
+                    @(procesando
+                        ? "Ingresando..."
+                        : "Ingresar")
+
+                </button>
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+
+    private string username = string.Empty;
+    private string password = string.Empty;
+
+    private string mensaje = string.Empty;
+
+    private bool procesando;
+
+
+    private async Task IniciarSesion()
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(username) ||
+            string.IsNullOrWhiteSpace(password))
+        {
+            mensaje = "Debe ingresar usuario y contraseña.";
+            return;
+        }
+
+        procesando = true;
+
+        try
+        {
+            var resultado =
+                await AuthService.LoginAsync(
+                    username,
+                    password
+                );
+
+            if (!resultado)
+            {
+                mensaje =
+                    "Usuario o contraseña incorrectos.";
+
+                return;
+            }
+
+            Navigation.NavigateTo(
+                "/punto-venta"
+            );
+        }
+        catch (Exception ex)
+        {
+            mensaje =
+                $"Error al iniciar sesión: {ex.Message}";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+
+    private async Task TeclaPresionada(
+        KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await IniciarSesion();
+        }
+    }
+}
