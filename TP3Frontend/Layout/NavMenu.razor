@@ -1,39 +1,156 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@using TP3Frontend.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">TP3Frontend</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+
+        <a class="navbar-brand" href="">
+            Sistema de Ventas
+        </a>
+
+        <button title="Navigation menu"
+                class="navbar-toggler"
+                @onclick="ToggleNavMenu">
+
             <span class="navbar-toggler-icon"></span>
+
         </button>
+
     </div>
 </div>
 
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>
+<div class="@NavMenuCssClass nav-scrollable"
+     @onclick="ToggleNavMenu">
+
+    <nav class="flex-column">
+
+        @if (!AuthService.EstaAutenticado)
+        {
+            <div class="nav-item px-3">
+
+                <NavLink class="nav-link"
+                         href="login">
+
+                    Iniciar sesión
+
+                </NavLink>
+
+            </div>
+        }
+        else
+        {
+            @if (AuthService.Rol == "Admin" ||
+                 AuthService.Rol == "Vendedor")
+            {
+                <div class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="punto-venta">
+
+                        Punto de Venta
+
+                    </NavLink>
+
+                </div>
+            }
+
+            @if (AuthService.Rol == "Admin")
+            {
+                <div class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="entrada-mercaderia">
+
+                        Entrada de Mercadería
+
+                    </NavLink>
+
+                </div>
+
+                <div class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href="entradas">
+
+                        Historial de Entradas
+
+                    </NavLink>
+
+                </div>
+            }
+
+            <hr class="text-light mx-3" />
+
+            <div class="px-3 text-light mb-3">
+
+                <div>
+                    <strong>
+                        @AuthService.UsuarioActual?.Nombre
+                    </strong>
+                </div>
+
+                <small>
+                    @AuthService.Rol
+                </small>
+
+            </div>
+
+            <div class="nav-item px-3">
+
+                <button class="btn btn-outline-light w-100"
+                        @onclick="CerrarSesion">
+
+                    Cerrar sesión
+
+                </button>
+
+            </div>
+        }
+
     </nav>
+
 </div>
 
 @code {
+
     private bool collapseNavMenu = true;
 
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+    private string? NavMenuCssClass =>
+        collapseNavMenu ? "collapse" : null;
+
+
+    protected override void OnInitialized()
+    {
+        AuthService.SesionCambiada += ActualizarMenu;
+    }
+
 
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+
+    private void ActualizarMenu()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+
+    private async Task CerrarSesion()
+    {
+        await AuthService.LogoutAsync();
+
+        Navigation.NavigateTo(
+            "/login"
+        );
+    }
+
+
+    public void Dispose()
+    {
+        AuthService.SesionCambiada -= ActualizarMenu;
     }
 }

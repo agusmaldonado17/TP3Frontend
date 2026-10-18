@@ -12,12 +12,26 @@ namespace TP3Frontend.Services
 
         public AuthResponse? UsuarioActual { get; private set; }
 
+        public event Action? SesionCambiada;
+
         public bool EstaAutenticado =>
             UsuarioActual != null &&
             !string.IsNullOrWhiteSpace(UsuarioActual.Token);
 
         public string Rol =>
             UsuarioActual?.Rol ?? string.Empty;
+
+        public bool EsAdmin =>
+            Rol == "Admin";
+
+        public bool EsVendedor =>
+            Rol == "Vendedor";
+
+        public bool TieneRol(params string[] roles)
+        {
+            return EstaAutenticado &&
+                   roles.Contains(Rol);
+        }
 
         public AuthService(HttpClient http, IJSRuntime js)
         {
@@ -90,6 +104,8 @@ namespace TP3Frontend.Services
                     auth.Token
                 );
 
+            SesionCambiada?.Invoke();
+
             return true;
         }
 
@@ -130,7 +146,10 @@ namespace TP3Frontend.Services
                     "usuarioId"
                 );
 
-            int.TryParse(usuarioIdTexto, out var usuarioId);
+            int.TryParse(
+                usuarioIdTexto,
+                out var usuarioId
+            );
 
             UsuarioActual = new AuthResponse
             {
@@ -146,6 +165,8 @@ namespace TP3Frontend.Services
                     "Bearer",
                     token
                 );
+
+            SesionCambiada?.Invoke();
         }
 
         public async Task LogoutAsync()
@@ -178,6 +199,8 @@ namespace TP3Frontend.Services
                 "localStorage.removeItem",
                 "usuarioId"
             );
+
+            SesionCambiada?.Invoke();
         }
     }
 }

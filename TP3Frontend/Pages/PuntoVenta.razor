@@ -2,6 +2,9 @@
 
 @using TP3Frontend.Models
 @inject HttpClient Http
+@using TP3Frontend.Services
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 
 <h3>Punto de Venta</h3>
 
@@ -142,6 +145,18 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (!AuthService.EstaAutenticado)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!AuthService.TieneRol("Admin", "Vendedor"))
+        {
+            Navigation.NavigateTo("/acceso-denegado");
+            return;
+        }
+
         await CargarProductos();
     }
 

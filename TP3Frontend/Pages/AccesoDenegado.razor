@@ -1,0 +1,25 @@
+﻿@page "/acceso-denegado"
+
+@inject NavigationManager Navigation
+
+<div class="container mt-5">
+    <div class="alert alert-danger">
+        <h4>Acceso denegado</h4>
+
+        <p>
+            No tiene permisos para acceder a esta sección.
+        </p>
+
+        <button class="btn btn-primary"
+                @onclick="Volver">
+            Volver
+        </button>
+    </div>
+</div>
+
+@code {
+    private void Volver()
+    {
+        Navigation.NavigateTo("/");
+    }
+}
