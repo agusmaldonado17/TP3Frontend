@@ -15,4 +15,6 @@ builder.Services.AddScoped(sp =>
 
 builder.Services.AddScoped<AuthService>();
 
+builder.Services.AddScoped<IReporteService, ReporteService>();
+
 await builder.Build().RunAsync();

@@ -1,0 +1,307 @@
+﻿@page "/reportes"
+
+@using TP3Frontend.Services
+
+@inject IReporteService ReporteService
+@inject IJSRuntime JS
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<h3>Reportes</h3>
+
+<p class="text-muted">
+    Genere, descargue o envíe por correo los reportes del sistema.
+</p>
+
+<div class="mb-4">
+    <label class="form-label">
+        Correo destinatario
+    </label>
+
+    <input type="email"
+           class="form-control"
+           style="max-width: 500px;"
+           placeholder="correo@ejemplo.com"
+           @bind="emailDestino" />
+</div>
+
+
+<div class="row mt-4">
+
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 shadow-sm">
+
+            <div class="card-body">
+
+                <h5 class="card-title">
+                    Stock
+                </h5>
+
+                <p class="card-text">
+                    Listado de productos y stock disponible.
+                </p>
+
+                <button class="btn btn-primary me-2"
+                        @onclick="DescargarStock"
+                        disabled="@procesando">
+
+                    Descargar PDF
+
+                </button>
+
+                <button class="btn btn-outline-success"
+                        @onclick='() => EnviarReporte("stock")'
+                        disabled="@procesando">
+
+                    Enviar por correo
+
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 shadow-sm">
+
+            <div class="card-body">
+
+                <h5 class="card-title">
+                    Ventas
+                </h5>
+
+                <p class="card-text">
+                    Listado de ventas registradas.
+                </p>
+
+                <button class="btn btn-primary me-2"
+                        @onclick="DescargarVentas"
+                        disabled="@procesando">
+
+                    Descargar PDF
+
+                </button>
+
+                <button class="btn btn-outline-success"
+                        @onclick='() => EnviarReporte("ventas")'
+                        disabled="@procesando">
+
+                    Enviar por correo
+
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="col-md-4 mb-3">
+        <div class="card h-100 shadow-sm">
+
+            <div class="card-body">
+
+                <h5 class="card-title">
+                    Entradas de mercadería
+                </h5>
+
+                <p class="card-text">
+                    Listado de ingresos de mercadería.
+                </p>
+
+                <button class="btn btn-primary me-2"
+                        @onclick="DescargarEntradas"
+                        disabled="@procesando">
+
+                    Descargar PDF
+
+                </button>
+
+                <button class="btn btn-outline-success"
+                        @onclick='() => EnviarReporte("entradas")'
+                        disabled="@procesando">
+
+                    Enviar por correo
+
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert @claseMensaje mt-3">
+        @mensaje
+    </div>
+}
+
+
+@code {
+
+    private bool procesando;
+
+    private string emailDestino = string.Empty;
+
+    private string mensaje = string.Empty;
+
+    private string claseMensaje = string.Empty;
+
+
+    protected override void OnInitialized()
+    {
+        if (!AuthService.EstaAutenticado)
+        {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        if (!AuthService.EsAdmin)
+        {
+            Navigation.NavigateTo(
+                "/acceso-denegado"
+            );
+        }
+    }
+
+
+    private async Task DescargarStock()
+    {
+        await Descargar(
+            () => ReporteService.GetStockPdfAsync(),
+            "stock.pdf"
+        );
+    }
+
+
+    private async Task DescargarVentas()
+    {
+        await Descargar(
+            () => ReporteService.GetVentasPdfAsync(),
+            "ventas.pdf"
+        );
+    }
+
+
+    private async Task DescargarEntradas()
+    {
+        await Descargar(
+            () => ReporteService.GetEntradasPdfAsync(),
+            "entradas.pdf"
+        );
+    }
+
+
+    private async Task Descargar(
+        Func<Task<byte[]?>> obtenerPdf,
+        string nombreArchivo)
+    {
+        procesando = true;
+        mensaje = string.Empty;
+
+        try
+        {
+            var pdf = await obtenerPdf();
+
+            if (pdf == null)
+            {
+                mensaje =
+                    "No se pudo generar el reporte.";
+
+                claseMensaje =
+                    "alert-danger";
+
+                return;
+            }
+
+            await JS.InvokeVoidAsync(
+                "downloadFile",
+                nombreArchivo,
+                "application/pdf",
+                pdf
+            );
+
+            mensaje =
+                "Reporte generado correctamente.";
+
+            claseMensaje =
+                "alert-success";
+        }
+        catch (Exception ex)
+        {
+            mensaje =
+                $"Error al descargar el reporte: {ex.Message}";
+
+            claseMensaje =
+                "alert-danger";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+
+
+    private async Task EnviarReporte(
+        string tipoReporte)
+    {
+        mensaje = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(emailDestino))
+        {
+            mensaje =
+                "Debe ingresar un correo destinatario.";
+
+            claseMensaje =
+                "alert-warning";
+
+            return;
+        }
+
+        procesando = true;
+
+        try
+        {
+            var enviado =
+                await ReporteService.EnviarReporteAsync(
+                    emailDestino,
+                    tipoReporte
+                );
+
+            if (enviado)
+            {
+                mensaje =
+                    "Reporte enviado correctamente.";
+
+                claseMensaje =
+                    "alert-success";
+            }
+            else
+            {
+                mensaje =
+                    "No se pudo enviar el reporte.";
+
+                claseMensaje =
+                    "alert-danger";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje =
+                $"Error al enviar el reporte: {ex.Message}";
+
+            claseMensaje =
+                "alert-danger";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+}
