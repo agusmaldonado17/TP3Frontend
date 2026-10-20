@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.JSInterop;
 using TP3Frontend.Models;
 
@@ -16,7 +17,8 @@ namespace TP3Frontend.Services
 
         public bool EstaAutenticado =>
             UsuarioActual != null &&
-            !string.IsNullOrWhiteSpace(UsuarioActual.Token);
+            !string.IsNullOrWhiteSpace(UsuarioActual.Token) &&
+            !TokenVencido(UsuarioActual.Token);
 
         public string Rol =>
             UsuarioActual?.Rol ?? string.Empty;
@@ -33,13 +35,19 @@ namespace TP3Frontend.Services
                    roles.Contains(Rol);
         }
 
-        public AuthService(HttpClient http, IJSRuntime js)
+
+        public AuthService(
+            HttpClient http,
+            IJSRuntime js)
         {
             _http = http;
             _js = js;
         }
 
-        public async Task<bool> LoginAsync(string username, string password)
+
+        public async Task<bool> LoginAsync(
+            string username,
+            string password)
         {
             var login = new LoginRequest
             {
@@ -58,7 +66,8 @@ namespace TP3Frontend.Services
             }
 
             var auth =
-                await response.Content.ReadFromJsonAsync<AuthResponse>();
+                await response.Content
+                    .ReadFromJsonAsync<AuthResponse>();
 
             if (auth == null ||
                 string.IsNullOrWhiteSpace(auth.Token))
@@ -109,6 +118,7 @@ namespace TP3Frontend.Services
             return true;
         }
 
+
         public async Task CargarSesionAsync()
         {
             var token =
@@ -119,6 +129,13 @@ namespace TP3Frontend.Services
 
             if (string.IsNullOrWhiteSpace(token))
             {
+                return;
+            }
+
+            // Si el JWT ya venció, limpiamos la sesión.
+            if (TokenVencido(token))
+            {
+                await LogoutAsync();
                 return;
             }
 
@@ -169,6 +186,7 @@ namespace TP3Frontend.Services
             SesionCambiada?.Invoke();
         }
 
+
         public async Task LogoutAsync()
         {
             UsuarioActual = null;
@@ -201,6 +219,59 @@ namespace TP3Frontend.Services
             );
 
             SesionCambiada?.Invoke();
+        }
+
+
+        private static bool TokenVencido(string token)
+        {
+            try
+            {
+                var partes = token.Split('.');
+
+                if (partes.Length < 2)
+                {
+                    return true;
+                }
+
+                var payload = partes[1]
+                    .Replace('-', '+')
+                    .Replace('_', '/');
+
+                switch (payload.Length % 4)
+                {
+                    case 2:
+                        payload += "==";
+                        break;
+
+                    case 3:
+                        payload += "=";
+                        break;
+                }
+
+                var bytes =
+                    Convert.FromBase64String(payload);
+
+                using var documento =
+                    JsonDocument.Parse(bytes);
+
+                if (!documento.RootElement
+                    .TryGetProperty("exp", out var exp))
+                {
+                    return true;
+                }
+
+                var fechaExpiracion =
+                    DateTimeOffset.FromUnixTimeSeconds(
+                        exp.GetInt64()
+                    );
+
+                return fechaExpiracion <=
+                       DateTimeOffset.UtcNow;
+            }
+            catch
+            {
+                return true;
+            }
         }
     }
 }

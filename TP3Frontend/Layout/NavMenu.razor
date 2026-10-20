@@ -42,8 +42,21 @@
         else
         {
             @if (AuthService.Rol == "Admin" ||
-                 AuthService.Rol == "Vendedor")
-            {
+                 AuthService.Rol == "Vendedor") {
+            
+                 <div class="nav-item px-3">
+
+                    <NavLink class="nav-link"
+                             href=""
+                             Match="NavLinkMatch.All">
+
+                         Inicio
+
+                     </NavLink>
+
+                </div>
+
+                
                 <div class="nav-item px-3">
 
                     <NavLink class="nav-link"

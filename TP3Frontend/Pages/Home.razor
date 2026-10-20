@@ -1,7 +1,123 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+@using TP3Frontend.Services
 
-<h1>Hello, world!</h1>
+@inject AuthService AuthService
+@inject NavigationManager Navigation
 
-Welcome to your new app.
+<h1>Sistema de Ventas</h1>
+
+@if (AuthService.EstaAutenticado)
+{
+    <p class="text-muted">
+        Bienvenido, @AuthService.UsuarioActual?.Nombre.
+    </p>
+
+    <div class="row mt-4">
+
+        @if (AuthService.TieneRol("Admin", "Vendedor"))
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+
+                        <h5 class="card-title">
+                            Punto de Venta
+                        </h5>
+
+                        <p class="card-text">
+                            Registre ventas y actualice automáticamente el stock.
+                        </p>
+
+                        <button class="btn btn-primary"
+                                @onclick='() => Navigation.NavigateTo("/punto-venta")'>
+                            Ir al Punto de Venta
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+        }
+
+
+        @if (AuthService.EsAdmin)
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+
+                        <h5 class="card-title">
+                            Entrada de Mercadería
+                        </h5>
+
+                        <p class="card-text">
+                            Registre nuevos ingresos y actualice el stock.
+                        </p>
+
+                        <button class="btn btn-success"
+                                @onclick='() => Navigation.NavigateTo("/entrada-mercaderia")'>
+                            Registrar entrada
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+
+                        <h5 class="card-title">
+                            Historial de Entradas
+                        </h5>
+
+                        <p class="card-text">
+                            Consulte las entradas de mercadería registradas.
+                        </p>
+
+                        <button class="btn btn-secondary"
+                                @onclick='() => Navigation.NavigateTo("/entradas")'>
+                            Ver historial
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+
+                        <h5 class="card-title">
+                            Reportes
+                        </h5>
+
+                        <p class="card-text">
+                            Genere, descargue y envíe reportes en PDF.
+                        </p>
+
+                        <button class="btn btn-info"
+                                @onclick='() => Navigation.NavigateTo("/reportes")'>
+                            Ver reportes
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div>
+}
+else
+{
+    <div class="alert alert-info mt-4">
+        Debe iniciar sesión para utilizar el sistema.
+    </div>
+
+    <button class="btn btn-primary"
+            @onclick='() => Navigation.NavigateTo("/login")'>
+        Iniciar sesión
+    </button>
+}
