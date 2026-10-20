@@ -1,0 +1,155 @@
+@page "/ventas"
+@using System.Globalization
+@using System.Net
+@using TP3Frontend.Models
+@using TP3Frontend.Services
+@inject HttpClient Http
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+<header class="page-heading">
+    <span class="eyebrow">VENTAS</span>
+    <h3>Historial de Ventas</h3>
+    <p>Consultá las operaciones registradas y el detalle de cada venta.</p>
+</header>
+
+<section class="surface-panel" aria-busy="@cargando.ToString().ToLowerInvariant()">
+    <form class="sales-filters" @onsubmit="Buscar" @onsubmit:preventDefault>
+        <div>
+            <label class="form-label" for="cliente-venta">Buscar por cliente</label>
+            <input id="cliente-venta" class="form-control" placeholder="Nombre del cliente" @bind="busqueda" disabled="@cargando" />
+        </div>
+        <div>
+            <label class="form-label" for="orden-ventas">Ordenar por</label>
+            <select id="orden-ventas" class="form-select" @bind="orden" disabled="@cargando">
+                <option value="fecha_desc">Más recientes</option>
+                <option value="fecha">Más antiguas</option>
+                <option value="total_desc">Mayor importe</option>
+                <option value="total_asc">Menor importe</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@cargando">Buscar</button>
+    </form>
+
+    @if (cargando)
+    {
+        <p class="empty-state" role="status">Cargando ventas...</p>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger" role="alert">@error</div>
+        <button class="btn btn-outline-secondary" @onclick="() => CargarVentas(pagina)">Reintentar</button>
+    }
+    else if (resultado.Datos.Count == 0)
+    {
+        <p class="empty-state">No hay ventas para mostrar con esta búsqueda.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead><tr><th>Nº</th><th>Fecha</th><th>Cliente</th><th>Usuario</th><th class="text-end">Total</th><th><span class="visually-hidden">Detalle</span></th></tr></thead>
+                <tbody>
+                    @foreach (var venta in resultado.Datos)
+                    {
+                        <tr @key="venta.Id">
+                            <td>#@venta.Id</td>
+                            <td>@venta.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@venta.NombreCliente</td>
+                            <td>@venta.NombreUsuario</td>
+                            <td class="text-end text-nowrap">@Moneda(venta.Total)</td>
+                            <td><button class="btn btn-primary btn-sm" aria-expanded="@((seleccionada == venta.Id).ToString().ToLowerInvariant())" @onclick="() => AlternarDetalle(venta.Id)">@(seleccionada == venta.Id ? "Ocultar" : "Ver detalle")</button></td>
+                        </tr>
+                        @if (seleccionada == venta.Id)
+                        {
+                            <tr class="sale-detail"><td colspan="6">
+                                <h6>Detalle de venta #@venta.Id</h6>
+                                @if (venta.Detalles.Count == 0)
+                                {
+                                    <p class="text-muted mb-0">Esta venta no tiene detalles disponibles.</p>
+                                }
+                                else
+                                {
+                                    <table class="table table-sm">
+                                        <thead><tr><th>Producto</th><th class="text-end">Cantidad</th><th class="text-end">Precio unitario</th><th class="text-end">Subtotal</th></tr></thead>
+                                        <tbody>
+                                            @foreach (var detalle in venta.Detalles)
+                                            {
+                                                <tr><td>@detalle.NombreProducto</td><td class="text-end">@detalle.Cantidad</td><td class="text-end">@Moneda(detalle.PrecioUnitario)</td><td class="text-end">@Moneda(detalle.Subtotal)</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                            </td></tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <nav class="sales-pagination" aria-label="Paginación de ventas">
+            <span class="text-muted">@resultado.TotalRegistros ventas · Página @pagina de @resultado.TotalPaginas</span>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-secondary" disabled="@(pagina <= 1)" @onclick="() => CargarVentas(pagina - 1)">Anterior</button>
+                <button class="btn btn-outline-secondary" disabled="@(pagina >= resultado.TotalPaginas)" @onclick="() => CargarVentas(pagina + 1)">Siguiente</button>
+            </div>
+        </nav>
+    }
+</section>
+
+@code {
+    private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("es-AR");
+    private RespuestaPaginada<VentaResponse> resultado = new();
+    private bool cargando;
+    private string error = string.Empty;
+    private string busqueda = string.Empty;
+    private string orden = "fecha_desc";
+    private string busquedaAplicada = string.Empty;
+    private string ordenAplicado = "fecha_desc";
+    private int pagina = 1;
+    private int? seleccionada;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!AuthService.EstaAutenticado) { Navigation.NavigateTo("/login"); return; }
+        if (!AuthService.TieneRol("Admin", "Vendedor")) { Navigation.NavigateTo("/acceso-denegado"); return; }
+        await CargarVentas(1);
+    }
+
+    private async Task Buscar()
+    {
+        busquedaAplicada = busqueda.Trim();
+        ordenAplicado = orden;
+        await CargarVentas(1);
+    }
+
+    private async Task CargarVentas(int nuevaPagina)
+    {
+        if (cargando) return;
+        cargando = true;
+        error = string.Empty;
+        seleccionada = null;
+        pagina = nuevaPagina;
+        try
+        {
+            var url = $"api/Ventas?pagina={pagina}&tamanoPagina=20&ordenarPor={ordenAplicado}&buscar={Uri.EscapeDataString(busquedaAplicada)}";
+            using var response = await Http.GetAsync(url);
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                error = "La sesión venció. Iniciá sesión nuevamente para consultar las ventas.";
+                return;
+            }
+            if (response.StatusCode == HttpStatusCode.Forbidden) { Navigation.NavigateTo("/acceso-denegado"); return; }
+            response.EnsureSuccessStatusCode();
+            resultado = await response.Content.ReadFromJsonAsync<RespuestaPaginada<VentaResponse>>()
+                ?? throw new InvalidOperationException("Respuesta vacía del servidor.");
+        }
+        catch (Exception)
+        {
+            error = "No se pudieron cargar las ventas. Verificá la conexión y volvé a intentar.";
+        }
+        finally { cargando = false; }
+    }
+
+    private void AlternarDetalle(int id) => seleccionada = seleccionada == id ? null : id;
+    private static string Moneda(decimal valor) => valor.ToString("C2", Cultura);
+}

@@ -1,4 +1,4 @@
-﻿@page "/entrada-mercaderia"
+@page "/entrada-mercaderia"
 
 @using TP3Frontend.Models
 @inject HttpClient Http
@@ -6,7 +6,11 @@
 @inject AuthService AuthService
 @inject NavigationManager Navigation
 
-<h3>Entrada de Mercadería</h3>
+<header class="page-heading">
+    <span class="eyebrow">INVENTARIO</span>
+    <h3>Entrada de Mercadería</h3>
+    <p>Seleccioná un proveedor y los productos que vas a ingresar.</p>
+</header>
 
 @if (cargando)
 {
@@ -14,8 +18,8 @@
 }
 else
 {
-    <div class="row">
-        <div class="col-md-7">
+    <div class="workspace-grid">
+        <div class="surface-panel catalog-panel">
 
             <div class="mb-3">
                 <label class="form-label">Proveedor</label>
@@ -43,7 +47,7 @@ else
                        @bind:event="oninput" />
             </div>
 
-            <table class="table table-striped">
+            <div class="table-responsive"><table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Producto</th>
@@ -69,20 +73,20 @@ else
                         </tr>
                     }
                 </tbody>
-            </table>
+            </table></div>
         </div>
 
-        <div class="col-md-5">
+        <div class="surface-panel summary-panel">
 
             <h4>Mercadería a ingresar</h4>
 
             @if (items.Count == 0)
             {
-                <p>No hay productos agregados.</p>
+                <p class="empty-state">No hay productos agregados.</p>
             }
             else
             {
-                <table class="table">
+                <div class="table-responsive"><table class="table">
                     <thead>
                         <tr>
                             <th>Producto</th>
@@ -124,9 +128,9 @@ else
                             </tr>
                         }
                     </tbody>
-                </table>
+                </table></div>
 
-                <div class="text-end">
+                <div class="text-end checkout-total">
 
                     <h5>
                         Total: $ @Total.ToString("N2")

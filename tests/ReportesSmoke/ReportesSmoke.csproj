@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="QuestPDF" Version="2025.12.4" />
+    <Compile Include="../../../TP5Backend/TP5ProgramacionMovil/Models/*.cs" Link="Models/%(Filename)%(Extension)" />
+    <Compile Include="../../../TP5Backend/TP5ProgramacionMovil/Services/ReportePdfService.cs" Link="ReportePdfService.cs" />
+  </ItemGroup>
+</Project>
+

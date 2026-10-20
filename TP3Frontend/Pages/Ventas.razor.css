@@ -1,0 +1,14 @@
+.sales-filters {
+    display: flex;
+    align-items: end;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.sales-filters > div:first-child { flex: 1; min-width: 180px; }
+.sales-pagination { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
+.sale-detail > td { padding: 24px; background: var(--canvas); }
+@media (max-width: 575.98px) {
+    .sales-filters > div { width: 100%; }
+    .sales-filters > button { width: 100%; }
+}

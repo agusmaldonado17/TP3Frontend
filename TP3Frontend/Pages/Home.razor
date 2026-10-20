@@ -1,11 +1,15 @@
-﻿@page "/"
+@page "/"
 
 @using TP3Frontend.Services
 
 @inject AuthService AuthService
 @inject NavigationManager Navigation
 
-<h1>Sistema de Ventas</h1>
+<header class="page-heading">
+    <span class="eyebrow">TU ESPACIO DE TRABAJO</span>
+    <h1>Sistema de Ventas</h1>
+    <p>La gestión de tu negocio, en un solo lugar.</p>
+</header>
 
 @if (AuthService.EstaAutenticado)
 {
@@ -13,7 +17,7 @@
         Bienvenido, @AuthService.UsuarioActual?.Nombre.
     </p>
 
-    <div class="row mt-4">
+    <div class="row mt-4 shortcut-grid">
 
         @if (AuthService.TieneRol("Admin", "Vendedor"))
         {
@@ -40,6 +44,18 @@
         }
 
 
+        @if (AuthService.TieneRol("Admin", "Vendedor"))
+        {
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Historial de Ventas</h5>
+                        <p class="card-text">Consultá las ventas registradas y sus productos.</p>
+                        <a class="btn btn-primary" href="ventas">Ver ventas</a>
+                    </div>
+                </div>
+            </div>
+        }
         @if (AuthService.EsAdmin)
         {
             <div class="col-md-4 mb-3">

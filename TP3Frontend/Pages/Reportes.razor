@@ -1,4 +1,4 @@
-﻿@page "/reportes"
+@page "/reportes"
 
 @using TP3Frontend.Services
 
@@ -7,13 +7,14 @@
 @inject AuthService AuthService
 @inject NavigationManager Navigation
 
+<span class="eyebrow">INFORMACIÓN DEL NEGOCIO</span>
 <h3>Reportes</h3>
 
 <p class="text-muted">
     Genere, descargue o envíe por correo los reportes del sistema.
 </p>
 
-<div class="mb-4">
+<div class="surface-panel mb-4">
     <label class="form-label">
         Correo destinatario
     </label>
@@ -26,7 +27,7 @@
 </div>
 
 
-<div class="row mt-4">
+<div class="row mt-4 report-grid">
 
     <div class="col-md-4 mb-3">
         <div class="card h-100 shadow-sm">

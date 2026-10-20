@@ -1,4 +1,4 @@
-﻿@using TP3Frontend.Services
+@using TP3Frontend.Services
 @inject AuthService AuthService
 @inject NavigationManager Navigation
 @implements IDisposable
@@ -7,6 +7,7 @@
     <div class="container-fluid">
 
         <a class="navbar-brand" href="">
+            <span class="brand-mark" aria-hidden="true">↗</span>
             Sistema de Ventas
         </a>
 
@@ -25,6 +26,7 @@
      @onclick="ToggleNavMenu">
 
     <nav class="flex-column">
+        <div class="nav-caption">ESPACIO DE TRABAJO</div>
 
         @if (!AuthService.EstaAutenticado)
         {
@@ -69,6 +71,12 @@
                 </div>
             }
 
+            @if (AuthService.TieneRol("Admin", "Vendedor"))
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="ventas">Historial de Ventas</NavLink>
+                </div>
+            }
             @if (AuthService.Rol == "Admin")
             {
                 <div class="nav-item px-3">
@@ -105,9 +113,9 @@
                 </div>
             }
 
-            <hr class="text-light mx-3" />
+            <hr class="nav-divider" />
 
-            <div class="px-3 text-light mb-3">
+            <div class="user-panel">
 
                 <div>
                     <strong>
@@ -123,7 +131,7 @@
 
             <div class="nav-item px-3">
 
-                <button class="btn btn-outline-light w-100"
+                <button class="btn btn-outline-secondary w-100"
                         @onclick="CerrarSesion">
 
                     Cerrar sesión
