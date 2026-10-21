@@ -10,7 +10,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 builder.Services.AddScoped(sp =>
     new HttpClient
     {
-        BaseAddress = new Uri("https://localhost:7073/")
+        BaseAddress = new Uri("https://tp3backend.runasp.net/")
     });
 
 builder.Services.AddScoped<AuthService>();
